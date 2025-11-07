@@ -35,3 +35,6 @@ active-profile
 oi-definitions.json
 *.sublime-project
 *.sublime-workspace
+/.vs
+/FSWatcher.Console/.vs
+/FSWatcher/.vs
