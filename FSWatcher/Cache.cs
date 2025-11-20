@@ -33,6 +33,7 @@ namespace FSWatcher
 			Item = item;
 		}
 	}
+
 	internal class Cache
 	{
 		private Func<bool> _abortCheck;
@@ -42,12 +43,17 @@ namespace FSWatcher
 		private Dictionary<string, FileEx> _files = new Dictionary<string, FileEx>();
 		private HashSet<string> _fileTypesAllowedDisabled;
 		private HashSet<string> _fileTypesAllowed;
+		private int millisecondIgnoreTime;
+		private TimeSpan ignoreTime;
+		private List<(DateTime ignoreUntil, string fileName)> ignoreByTimeList = new List<(DateTime ignoreUntil, string fileName)>();
 
 
-		public Cache(string dir, Func<bool> abortCheck, HashSet<string> fileTypesAllowed)
+		public Cache(string dir, Func<bool> abortCheck, HashSet<string> fileTypesAllowed, int millisecondIgnoreTime = WatcherSettings.DefaultMillisecondIgnoreTime)
 		{
 			_dir = dir;
 			_abortCheck = abortCheck;
+			this.millisecondIgnoreTime = millisecondIgnoreTime;
+			ignoreTime = new TimeSpan(0, 0, 0, 0, millisecondIgnoreTime);
 
 			_fileTypesAllowed = fileTypesAllowed == null ?
 										new HashSet<string>() :
@@ -122,17 +128,32 @@ namespace FSWatcher
 
 			if (item.Type == ChangeType.FileCreated)
 			{
-				return (FileAllowed(item.Item) && Add(GetFile(item.Item), _files));
+				bool allowed = FileAllowed(item.Item) && Add(GetFile(item.Item), _files);
+				if (allowed)
+				{
+					ignoreByTimeList.Add((DateTime.Now + ignoreTime, item.Item));
+				}
+				return (allowed);
 			}
 
 			if (item.Type == ChangeType.FileChanged)
 			{
-				return (FileAllowed(item.Item) && Update(GetFile(item.Item), _files));
+				bool allowed = FileAllowed(item.Item) && Update(GetFile(item.Item), _files);
+				if (allowed)
+				{
+					ignoreByTimeList.Add((DateTime.Now + ignoreTime, item.Item));
+				}
+				return (allowed);
 			}
 
 			if (item.Type == ChangeType.FileDeleted)
 			{
-				return (FileAllowed(item.Item) && Remove(GetFile(item.Item).ToString(), _files));
+				bool allowed = FileAllowed(item.Item) && Remove(GetFile(item.Item).ToString(), _files);
+				if (allowed)
+				{
+					ignoreByTimeList.Add((DateTime.Now + ignoreTime, item.Item));
+				}
+				return (allowed);
 			}
 
 			return (false);
@@ -217,11 +238,10 @@ namespace FSWatcher
 				{
 					string xString = x.ToString();
 					ChangeType type = CurrentChangeType(isFile, ChangeType.FileCreated);
-					if (
-						(!isFile && Add(x, original)) ||
-						(isFile && FileAllowed(xString) && Add(x, original))
-						)
+					if ((!isFile && Add(x, original)) ||
+						(isFile && FileAllowed(xString) && Add(x, original)))
 					{
+						ignoreByTimeList.Add((DateTime.Now + ignoreTime, xString));
 						Notify(type, xString, action);
 						hasChanges = true;
 					}
@@ -238,11 +258,10 @@ namespace FSWatcher
 				{
 					string xString = x.ToString();
 					ChangeType type = CurrentChangeType(isFile, ChangeType.FileChanged);
-					if (
-						(!isFile && Update(x, original)) ||
-						(isFile && FileAllowed(xString) && Update(x, original))
-						)
+					if ((!isFile && Update(x, original)) ||
+						(isFile && FileAllowed(xString) && Update(x, original)))
 					{
+						ignoreByTimeList.Add((DateTime.Now + ignoreTime, xString));
 						Notify(type, x.ToString(), action);
 						hasChanges = true;
 					}
@@ -259,11 +278,10 @@ namespace FSWatcher
 				{
 					string xString = x.ToString();
 					ChangeType type = CurrentChangeType(isFile, ChangeType.FileDeleted);
-					if (
-						(!isFile && Remove(x.ToString(), original)) ||
-						(isFile && FileAllowed(xString) && Remove(x.ToString(), original))
-						)
+					if ((!isFile && Remove(x.ToString(), original)) ||
+						(isFile && FileAllowed(xString) && Remove(x.ToString(), original)))
 					{
+						ignoreByTimeList.Add((DateTime.Now + ignoreTime, xString));
 						Notify(type, x.ToString(), action);
 						hasChanges = true;
 					}
@@ -377,6 +395,19 @@ namespace FSWatcher
 
 		private bool FileAllowed(string file)
 		{
+			int ignoredIndex = ignoreByTimeList.FindIndex(t => t.fileName == file);
+			if (ignoredIndex >= 0)
+			{
+				var item = ignoreByTimeList[ignoredIndex];
+				if (item.ignoreUntil > DateTime.Now)
+				{
+					return (false);
+				}
+
+				// Remove the old entry
+				ignoreByTimeList.RemoveAt(ignoredIndex);
+			}
+
 			//Console.WriteLine($"07 FileAllowed check {file}");
 			if (_fileTypesAllowed.Count <= 0)
 			{

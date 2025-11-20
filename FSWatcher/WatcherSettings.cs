@@ -177,6 +177,8 @@ namespace FSWatcher
 
 	public struct WatcherSettings
 	{
+		public const int DefaultMillisecondIgnoreTime = 300;
+
 		private static readonly WatcherSettings IDefault = new WatcherSettings(false, false, false, false, false, false, false, -1);
 		public static WatcherSettings Default
 		{

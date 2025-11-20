@@ -24,6 +24,7 @@ namespace FSWatcher
 		private Thread _watcher = null;
 
 
+
 		private DateTime _nextCatchup = DateTime.MinValue;
 
 		public WatcherSettings Settings
@@ -36,12 +37,13 @@ namespace FSWatcher
 
 
 		public Watcher(string dir,
+					int millisecondIgnoreTime,
 					Action<ChangeType, string> directoryCreated, Action<ChangeType, string> directoryDeleted, Action<ChangeType, string> fileCreated, Action<ChangeType, string> fileChanged, Action<ChangeType, string> fileDeleted,
 					HashSet<string> fileTypesAllowed
 					)
 		{
 			_dir = dir;
-			_cache = new Cache(_dir, () => _exit, fileTypesAllowed);
+			_cache = new Cache(_dir, () => _exit, fileTypesAllowed, millisecondIgnoreTime);
 			_settings = SettingsReader.GetSettings();
 
 			_directoryCreated = directoryCreated;
@@ -52,15 +54,16 @@ namespace FSWatcher
 
 		}
 		public Watcher(string dir,
+							int millisecondIgnoreTime,
 							Action<ChangeType, string> directoryCreated, Action<ChangeType, string> directoryDeleted, Action<ChangeType, string> fileCreated, Action<ChangeType, string> fileChanged, Action<ChangeType, string> fileDeleted,
 							HashSet<string> fileTypesAllowed,
 							WatcherSettings cachedSettings
 							)
 		{
 			_dir = dir;
-			_cache = new Cache(_dir, () => _exit, fileTypesAllowed);
+			_cache = new Cache(_dir, () => _exit, fileTypesAllowed, millisecondIgnoreTime);
 			_settings = cachedSettings;
-
+			
 			_directoryCreated = directoryCreated;
 			_directoryDeleted = directoryDeleted;
 			_fileCreated = fileCreated;

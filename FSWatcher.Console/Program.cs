@@ -20,9 +20,11 @@ namespace FSWatcher.Test
 				".cs"
 			};
 
+			int ignoreMS = WatcherSettings.DefaultMillisecondIgnoreTime;
 			var watcher = new Watcher(
 					//Environment.CurrentDirectory,
 					@"D:\dev\Projects\Holo\_Game",
+					ignoreMS,
 					//(s) => System.Console.WriteLine("Dir created " + s),
 					//(s) => System.Console.WriteLine("Dir deleted " + s),
 					null,
@@ -31,7 +33,7 @@ namespace FSWatcher.Test
 					(changeType, fileName) => System.Console.WriteLine($"[{DateTime.Now.ToString("HH:mm:ss.fff")}] {changeType} {fileName}"),
 					(changeType, fileName) => System.Console.WriteLine($"[{DateTime.Now.ToString("HH:mm:ss.fff")}] {changeType} {fileName}"),
 					fileTypesAllowed
-					, new WatcherSettings(true, true, true, true, true, true, true, 200)
+					, new WatcherSettings(true, true, true, true, true, true, true)
 					);
 
 			var settings = watcher.Settings;
@@ -41,7 +43,7 @@ namespace FSWatcher.Test
 
 			watcher.ErrorNotifier((path, ex) => 
 			{ 
-				System.Console.WriteLine("{0}\n{1}", path, ex); 
+				System.Console.WriteLine("{0}\n{1}", path, ex);
 			});
 
 			// Print strategy
